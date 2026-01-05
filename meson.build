@@ -16,3 +16,5 @@ executable('up_customer_list', 'apps/001/up_customer_list.vala', dependencies: d
 executable('clipboard', 'apps/001/clipboard.vala', dependencies: dependencies)
 executable('entry_completion', 'apps/001/entry_completion.vala', dependencies: dependencies)
 executable('checklist', 'apps/002/001-checklist.vala', dependencies: dependencies)
+executable('validate_email', 'apps/002/002-validateEmail.vala', dependencies: dependencies)
+executable('make_password', 'apps/002/003-make_password.vala', dependencies: dependencies)
