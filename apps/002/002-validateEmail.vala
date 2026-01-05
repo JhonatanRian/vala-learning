@@ -33,7 +33,6 @@ public bool validate_email(string email) {
 
 class Program : Object {
     public static int main(string[] args) {
-        var emails = new GLib.List<string> ();
 
         while (true) {
             stdout.printf("Enter an email address to validate (or type 'exit' to quit): ");
@@ -41,16 +40,12 @@ class Program : Object {
             if (input == null || input.strip().down() == "exit") {
                 break;
             }
-            emails.append(input.strip());
-        }
-
-        emails.foreach((email) => {
-            if (validate_email(email)) {
-                stdout.printf(@"The email $(email) is valid.\n");
+            if (validate_email(input.strip())) {
+                stdout.printf(@"The email $(input.strip()) is valid.\n");
             } else {
-                stdout.printf(@"The email $(email) is invalid.\n");
+                stdout.printf(@"The email $(input.strip()) is invalid.\n");
             }
-        });
+        }
         return 0;
     }
 }
