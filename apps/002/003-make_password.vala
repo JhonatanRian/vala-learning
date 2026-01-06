@@ -26,7 +26,6 @@ public string make_password(
         throw new PasswordError.INVALID_LENGTH("Password length must not exceed 32 characters.");
     }
 
-    var password_chars = new List<char> ();
     var category_types = new HashTable<string, string> (str_hash, str_equal);
     if (use_uppercase) category_types.insert("uppercase", UPPERCASE);
     if (use_lowercase) category_types.insert("lowercase", LOWERCASE);
@@ -36,9 +35,13 @@ public string make_password(
     var keys_types = category_types.get_keys_as_array();
     var builder = new StringBuilder ();
 
+    foreach (var value in category_types.get_values()) {
+        var char_index = randon_index(value.length);
+        builder.append_c(value[char_index]);
+    }
+
     while (builder.str.length < length) {
         var category_type_id = keys_types[randon_index(keys_types.length)];
-        print("Selected category: %s\n", category_type_id);
         var chars = category_types.lookup(category_type_id);
         var char_index = randon_index(chars.length);
         builder.append_c(chars[char_index]);
@@ -48,10 +51,41 @@ public string make_password(
 }
 
 public void main(){
-    try {
-        var password = make_password(12, true, true, true);
-        print(@"Generated Password: $(password)");
-    } catch (PasswordError e) {
-        print(@"Error: %s", e.message);
+    while (true){
+        try {
+            print("\033[2J\033[H");
+            print("\n=== Password Generator ===\n");
+            print("press Ctrl+C to exit\n\n");
+            print("Enter desired password length (4-32): ");
+            var input = stdin.read_line().strip();
+            int length = int.parse(input);
+
+            if (length < 4 || length > 32) {
+                throw new PasswordError.INVALID_LENGTH("Password length must be between 4 and 32.");
+            }
+
+            print("Enter whether to use uppercase letters (true/false): ");
+            var use_uppercase = bool.parse(stdin.read_line().strip());
+
+            print("Enter whether to use numbers (true/false): ");
+            var use_numbers = bool.parse(stdin.read_line().strip());
+
+            print("Enter whether to use special characters (true/false): ");
+            var use_special = bool.parse(stdin.read_line().strip());
+
+            print("\033[2J\033[H");
+            print("Generating password...\n\n");
+
+            var password = make_password(length, use_uppercase, use_numbers, use_special);
+            print("\n------------------------------\n");
+            print(@"Generated Password: $(password)");
+            print("\n------------------------------\n");
+            print("Press Enter to continue...");
+            stdin.read_line().strip();
+
+        } catch (Error e) {
+            print("Invalid input. Please enter a number between 4 and 32.\n");
+            continue;
+        }
     }
 }
