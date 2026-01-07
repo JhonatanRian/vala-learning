@@ -19,3 +19,4 @@ executable('checklist', 'apps/002/001-checklist.vala', dependencies: dependencie
 executable('validate_email', 'apps/002/002-validateEmail.vala', dependencies: dependencies)
 executable('make_password', 'apps/002/003-make_password.vala', dependencies: dependencies)
 executable('event_loop', 'apps/002/005_event_loop.vala', dependencies: dependencies)
+executable('key_file', 'apps/002/006-key_file.vala', dependencies: dependencies)
