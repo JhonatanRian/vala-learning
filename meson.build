@@ -21,3 +21,4 @@ executable('make_password', 'apps/002/003-make_password.vala', dependencies: dep
 executable('event_loop', 'apps/002/005_event_loop.vala', dependencies: dependencies)
 executable('key_file', 'apps/002/006-key_file.vala', dependencies: dependencies)
 executable('jsonl', 'apps/002/007-jsonl.vala', dependencies: dependencies)
+executable('parsejson', 'apps/002/008-parsejson.vala', dependencies: dependencies)
