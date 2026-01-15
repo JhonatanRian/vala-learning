@@ -34,6 +34,103 @@ class Token {
     }
 }
 
+abstract class JsonValue {
+    public abstract string to_string ();
+}
+
+class JsonString : JsonValue {
+    public string value;
+
+    public JsonString (string value) {
+        this.value = value;
+    }
+
+    public override string to_string () {
+        return @"\"$(value)\"";
+    }
+}
+
+class JsonNumber : JsonValue {
+    public string value;
+
+    public JsonNumber (string value) {
+        this.value = value;
+    }
+
+    public override string to_string () {
+        return value;
+    }
+}
+
+class JsonBool : JsonValue {
+    public bool value;
+
+    public JsonBool (bool value) {
+        this.value = value;
+    }
+
+    public override string to_string () {
+        return value ? "true" : "false";
+    }
+}
+
+class JsonNull : JsonValue {
+    public override string to_string () {
+        return "null";
+    }
+}
+
+class JsonArray : JsonValue {
+    public Array<JsonValue> items;
+
+    public JsonArray () {
+        items = new Array<JsonValue> ();
+    }
+
+    public void add (JsonValue value) {
+        items.append_val (value);
+    }
+
+    public override string to_string () {
+        var result = new StringBuilder ("[");
+        for (int i = 0; i < items.length; i++) {
+            result.append (items.index (i).to_string ());
+            if (i < items.length - 1) {
+                result.append (", ");
+            }
+        }
+        result.append ("]");
+        return result.str;
+    }
+}
+
+class JsonObject : JsonValue {
+    public GLib.HashTable<string, JsonValue> properties;
+
+    public JsonObject () {
+        properties = new GLib.HashTable<string, JsonValue> (str_hash, str_equal);
+    }
+
+    public void set (string key, JsonValue value) {
+        properties.insert (key, value);
+    }
+
+    public override string to_string () {
+        var result = new StringBuilder ("{");
+        var keys = properties.get_keys ();
+        for (int i = 0; i < keys.length (); i++) {
+            string key = keys.nth_data (i);
+            var value = properties.lookup (key);
+            result.append (@"\"$(key)\": $(value.to_string ())");
+            if (i < keys.length () - 1) {
+                result.append (", ");
+            }
+        }
+        result.append ("}");
+        return result.str;
+    }
+}
+
 Array<Token> lexer (string json) {
     var tokens = new Array<Token> ();
     int i = 0;
@@ -75,7 +172,7 @@ Array<Token> lexer (string json) {
             while (i < json.length && json[i] != QUOTE) {
                 i++;
             }
-            string str_value = json.substring (start, i);
+            string str_value = json.substring (start, i - start);
             tokens.append_val (new Token (TypeToken.TYPE_STRING, str_value));
             i++;
             break;
@@ -85,8 +182,21 @@ Array<Token> lexer (string json) {
                 while (i < json.length && (json[i].isdigit () || json[i] == '.' || json[i] == '-' || json[i] == '+' || json[i] == 'e' || json[i] == 'E')) {
                     i++;
                 }
-                string num_value = json.substring (start, i);
+                string num_value = json.substring (start, i - start);
                 tokens.append_val (new Token (TypeToken.TYPE_NUMBER, num_value));
+            } else if (c.isalpha ()) {
+                int start = i;
+                while (i < json.length && json[i].isalpha ()) {
+                    i++;
+                }
+                string word = json.substring (start, i - start);
+                if (word == "true") {
+                    tokens.append_val (new Token (TypeToken.TYPE_TRUE, "true"));
+                } else if (word == "false") {
+                    tokens.append_val (new Token (TypeToken.TYPE_FALSE, "false"));
+                } else if (word == "null") {
+                    tokens.append_val (new Token (TypeToken.TYPE_NULL, "null"));
+                }
             } else {
                 i++;
             }
@@ -109,14 +219,13 @@ class JsonParser {
     }
 
     public Token current_token () throws JsonError {
-        var token = current_token ();
-        if (token != null) {
-            return tokens;
+        if (position < tokens.length) {
+            return tokens.index (position);
         }
         throw new JsonError.PARSE_ERROR ("No more tokens");
     }
 
-    public GLib.Value parse_value () throws JsonError {
+    public JsonValue parse_value () throws JsonError {
         var token = current_token ();
 
         switch (token.type) {
@@ -126,31 +235,19 @@ class JsonParser {
             return parse_array ();
         case TypeToken.TYPE_STRING:
             consume ();
-            return token.value;
+            return new JsonString (token.value);
         case TypeToken.TYPE_NUMBER:
             consume ();
-            if (token.value.contains (".")) {
-                var val = GLib.Value (typeof (double));
-                val.set_double (double.parse (token.value));
-                return val;
-            } else {
-                var val = GLib.Value (typeof (int));
-                val.set_int (int.parse (token.value));
-                return val;
-            }
+            return new JsonNumber (token.value);
         case TypeToken.TYPE_TRUE:
             consume ();
-            var val = GLib.Value (typeof (bool));
-            val.set_boolean (true);
-            return val;
+            return new JsonBool (true);
         case TypeToken.TYPE_FALSE:
             consume ();
-            var val = GLib.Value (typeof (bool));
-            val.set_boolean (false);
-            return val;
+            return new JsonBool (false);
         case TypeToken.TYPE_NULL:
             consume ();
-            return GLib.Value (typeof (void));
+            return new JsonNull ();
         default:
             throw new JsonError.PARSE_ERROR (@"Token inesperado: $(token.value)");
         }
@@ -165,8 +262,8 @@ class JsonParser {
         return token;
     }
 
-    private GLib.Value parse_object () throws JsonError {
-        VariantDict dict = new VariantDict ();
+    private JsonValue parse_object () throws JsonError {
+        JsonObject obj = new JsonObject ();
         consume (TypeToken.TYPE_LBRACE);
 
         if (current_token () == null) {
@@ -175,7 +272,7 @@ class JsonParser {
 
         if (current_token ().type == TypeToken.TYPE_RBRACE) {
             consume (TypeToken.TYPE_RBRACE);
-            return dict.end ();
+            return obj;
         }
 
         while (true) {
@@ -185,7 +282,7 @@ class JsonParser {
             consume (TypeToken.TYPE_COLON);
 
             var value = parse_value ();
-            dict.insert_value (key_string, value);
+            obj.set (key_string, value);
 
             if (current_token ().type == TypeToken.TYPE_COMMA) {
                 consume (TypeToken.TYPE_COMMA);
@@ -197,22 +294,21 @@ class JsonParser {
         }
 
         consume (TypeToken.TYPE_RBRACE);
-        return dict.end ();
+        return obj;
     }
 
-    private GLib.Value parse_array () throws JsonError {
-        Array<GLib.Value> array = new Array<GLib.Value> ();
+    private JsonValue parse_array () throws JsonError {
+        JsonArray array = new JsonArray ();
         consume (TypeToken.TYPE_LBRACKET);
 
         if (current_token ().type == TypeToken.TYPE_RBRACKET) {
             consume (TypeToken.TYPE_RBRACKET);
             return array;
         }
-        ;
 
         while (true) {
             var value = parse_value ();
-            array.append_val (value);
+            array.add (value);
 
             if (current_token ().type == TypeToken.TYPE_COMMA) {
                 consume (TypeToken.TYPE_COMMA);
@@ -244,8 +340,9 @@ public void main (string[] args) {
     var tokens = lexer (json_input);
     var parser = new JsonParser (tokens);
     try {
-        var result = parser.parse_value ();
-        print ("Parsed JSON successfully.\n");
+        JsonValue result = parser.parse_value ();
+        print ("Parsed JSON successfully:\n");
+        print ("%s\n", result.to_string ());
     } catch (JsonError e) {
         print ("Error parsing JSON: %s\n", e.message);
     }
