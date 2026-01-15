@@ -1,0 +1,38 @@
+# Compiled binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+
+# Object files
+*.o
+*.lo
+
+# Vala generated C files (if not committed)
+*.c
+*.h
+
+# Build directories
+build/
+_build/
+cmake-build-*/
+meson-build/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*~
+
+.idea/
